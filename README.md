@@ -9,7 +9,8 @@ This is the Zabbix Java Gateway sources updated to allow
 
 ## How it work
 
-You have to specify a username in your JMX item like <user>:<protocol>
+You have to specify a username in your JMX item like "user:protocol"
+
 Where protocol can be one of :
  * jmx : to use the standard jmx url ()
  * jboss : to use an url for jboss monitoring

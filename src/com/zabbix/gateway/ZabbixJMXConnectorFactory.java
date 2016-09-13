@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import javax.rmi.ssl.SslRMIClientSocketFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,12 +73,7 @@ class ZabbixJMXConnectorFactory
 			{
 				try
 				{
-                    if ("t3".equals(url.getProtocol())) {
-                        env.put(JMXConnectorFactory.PROTOCOL_PROVIDER_PACKAGES, "weblogic.management.remote");
-                        env.put(javax.naming.Context.SECURITY_PRINCIPAL, ((String[])env.get(JMXConnector.CREDENTIALS))[0]);
-                        env.put(javax.naming.Context.SECURITY_CREDENTIALS, ((String[])env.get(JMXConnector.CREDENTIALS))[1]);
-                    }
-  					JMXConnector jmxc = JMXConnectorFactory.connect(url, env);
+                    JMXConnector jmxc = JMXConnectorFactory.connect(url, env);
 
 					logger.trace("call to JMXConnectorFactory.connect('{}') successful", url);
 

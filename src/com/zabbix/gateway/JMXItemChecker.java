@@ -19,6 +19,7 @@
 
 package com.zabbix.gateway;
 
+import java.util.Collections;
 import java.util.HashMap;
 
 import javax.management.MBeanAttributeInfo;
@@ -28,7 +29,11 @@ import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularDataSupport;
 import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import javax.management.remote.rmi.RMIConnectorServer;
+import javax.naming.Context;
+import javax.rmi.ssl.SslRMIClientSocketFactory;
 
 import org.json.*;
 
@@ -45,6 +50,7 @@ class JMXItemChecker extends ItemChecker
 
 	private String username;
 	private String password;
+	private String protocol;
 
 	public JMXItemChecker(JSONObject request) throws ZabbixException
 	{
@@ -60,14 +66,14 @@ class JMXItemChecker extends ItemChecker
             String jboss_url    = "service:jmx:remoting-jmx://" + conn + ":" + port; // jboss
             String t3_url       = "service:jmx:t3://"+conn+":"+port+"/jndi/weblogic.management.mbeanservers.runtime"; // T3
             String t3s_url      = "service:jmx:t3s://"+conn+":"+port+"/jndi/weblogic.management.mbeanservers.runtime"; // T3S
-            String protocol = "jmx";
+            protocol = "jmx";
             String tested_url = jmx_url;
 
 			username = request.optString(JSON_TAG_USERNAME, null);
 			password = request.optString(JSON_TAG_PASSWORD, null);
 
-			if (null != username && null == password || null == username && null != password)
-				throw new IllegalArgumentException("invalid username and password nullness combination");
+			//if (null != username && null == password || null == username && null != password)
+			//	throw new IllegalArgumentException("invalid username and password nullness combination");
 
             if (null != username) {
                 // Testing if username is like "<user>:<protocol>"
@@ -80,19 +86,32 @@ class JMXItemChecker extends ItemChecker
             }
 
             switch (protocol) {
-                case "jmx":     tested_url = jmx_url;   break;
+                case "jmx":
+				case "jmxs":
+					tested_url = jmx_url;   break;
                 case "jboss":   tested_url = jboss_url; break;
                 case "t3":      tested_url = t3_url;    break;
                 case "t3s":     tested_url = t3s_url;   break;
                 default:        tested_url = jmx_url;   break;
             }
 
-		    logger.info("Using url '{}' with user '{}'", tested_url, username);
+			logger.info("Using url '{}' with user '{}'", tested_url, username);
 
             HashMap<String, Object> env = new HashMap<String, Object>();
             env.put(JMXConnector.CREDENTIALS, new String[] {username, password});
 
-            url = new JMXServiceURL(tested_url);
+			if (protocol.equals("t3") || protocol.equals("t3s")) {
+				env.put(JMXConnectorFactory.PROTOCOL_PROVIDER_PACKAGES, "weblogic.management.remote");
+				env.put(javax.naming.Context.SECURITY_PRINCIPAL, ((String[]) env.get(JMXConnector.CREDENTIALS))[0]);
+				env.put(javax.naming.Context.SECURITY_CREDENTIALS, ((String[]) env.get(JMXConnector.CREDENTIALS))[1]);
+			}
+
+			// Required by SSL
+			if (protocol.equals("jmxs")) {
+				env.put("com.sun.jndi.rmi.factory.socket", new SslRMIClientSocketFactory());
+			}
+
+			url = new JMXServiceURL(tested_url);
             jmxc = ZabbixJMXConnectorFactory.connect(url, env);
 			mbsc = jmxc.getMBeanServerConnection();
 		}
@@ -116,13 +135,22 @@ class JMXItemChecker extends ItemChecker
 
 		try
 		{
+
 			HashMap<String, Object> env = null;
 
-			if (null != username && null != password)
-			{
-				env = new HashMap<String, Object>();
-				env.put(JMXConnector.CREDENTIALS, new String[] {username, password});
-			}
+			env = new HashMap<String, Object>();
+			env.put(JMXConnector.CREDENTIALS, new String[]{username, password});
+
+            if (protocol.equals("t3") || protocol.equals("t3s")) {
+                env.put(JMXConnectorFactory.PROTOCOL_PROVIDER_PACKAGES, "weblogic.management.remote");
+                env.put(javax.naming.Context.SECURITY_PRINCIPAL, ((String[]) env.get(JMXConnector.CREDENTIALS))[0]);
+                env.put(javax.naming.Context.SECURITY_CREDENTIALS, ((String[]) env.get(JMXConnector.CREDENTIALS))[1]);
+            }
+
+            // Required by SSL
+            if (protocol.equals("jmxs")) {
+                env.put("com.sun.jndi.rmi.factory.socket", new SslRMIClientSocketFactory());
+            }
 
 			jmxc = ZabbixJMXConnectorFactory.connect(url, env);
 			mbsc = jmxc.getMBeanServerConnection();

@@ -12,7 +12,8 @@ This is the Zabbix Java Gateway sources updated to allow
 You have to specify a username in your JMX item like "user:protocol"
 
 Where protocol can be one of :
- * jmx : to use the standard jmx url ()
+ * jmx : to use the standard jmx url
+ * jmxs : to use the standard jmx url over ssl
  * jboss : to use an url for jboss monitoring
  * t3 : to use a weblogic t3 connexion.
  * t3s : for weblogic t3s connexion
